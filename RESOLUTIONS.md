@@ -117,3 +117,27 @@ brace-expanded directory names taken literally.
 no brace expansion.
 **Fix.** POSIX shell only; hex decoding via shell `printf` instead of awk
 extensions.
+
+---
+
+### R-010 - Look-ahead in a spread z-score produced a 25x "edge"
+**Symptom.** A pairs study reported spread mean-reversion worth up to 25x round-trip
+cost, with t-statistics above 30 and in-sample and out-of-sample figures agreeing
+closely. Everything about it looked correct.
+**Cause.** The spread was normalised with `groupby(date).transform(mean/std)` -
+the *whole session's* mean and standard deviation. The z-score at 10:00 therefore
+knew where the session closed. Being "extreme" was partly a statement about the
+future.
+**Fix.** Trailing-window mean and standard deviation with the current bar excluded
+via `shift(1).rolling(...)`. The measured edge fell from 25x to 0.02-0.6x. Nothing
+survived.
+**Lesson.** This is the third look-ahead bug in this project (see R-006) and by far
+the most convincing while it lasted. Two heuristics caught it:
+ - an effect that large in a liquid, heavily-arbitraged market is a bug until
+   proven otherwise;
+ - in-sample and out-of-sample agreeing *too* closely suggests both are drawing on
+   the same contaminated information, rather than one validating the other.
+
+**Standing rule adopted:** any statistic computed with `groupby(...).transform(...)`
+over a period that overlaps the prediction window is look-ahead. Normalisation must
+be causal, always.

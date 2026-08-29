@@ -171,21 +171,136 @@ contract; it does not justify a conclusion about breakout strategies generally.
 
 ---
 
-## Where an edge would actually be
+## Study 06 - Spread mean reversion between the contracts
 
-Two studies converge on the same place.
+**Question.** The two contracts are ~95% correlated. Does the spread revert
+enough to pay for both legs (0.684 bp round trip)?
 
-Study 01 found that aggressors are adversely selected. Study 02 found that the
-tradeable form of the lead–lag requires being fast enough to aggress
-profitably — which commodity infrastructure is not.
+**Result with a causal z-score.** No.
 
-Both point at the **passive side of the book**: earning the spread rather than
-paying it. On instrument B that swings the cost term by roughly 0.8 bp per round
-trip, which is larger than every gross edge measured in this repository combined.
+| abs(z) > | Hold | IS bp | OOS bp | OOS t | vs cost |
+|---|---|---|---|---|---|
+| 1.0 | 5 | 0.080 | 0.043 | 0.95 | 0.06x |
+| 1.5 | 15 | -0.046 | 0.282 | 2.86 | 0.41x |
+| 2.0 | 5 | 0.364 | 0.379 | 4.45 | 0.55x |
+| 2.0 | 30 | 0.563 | -0.129 | -0.61 | -0.19x |
 
-Testing it requires knowing where an order sits in the queue, whether it would
-have filled, and what happened to the orders around it. None of that is present
-in trade data — it needs full depth or market-by-order capture.
+**Verdict - no edge.** Nothing clears cost with a stable sign.
 
-That is a specific, falsifiable reason to extend the capture pipeline, rather
-than a general hope that more data helps.
+> **This study first reported edges of 25x cost with t > 30.** Those were
+> entirely produced by normalising the spread with the *full day's* mean and
+> standard deviation - the z-score at 10:00 knew where the session closed.
+> With a trailing-window z-score the effect vanishes completely. See
+> [R-010](RESOLUTIONS.md#r-010). It is the most instructive failure in this
+> repository.
+
+---
+
+## Study 07 - Volume bars and trade-size stratification
+
+**Question.** Time bars sample calendar time, which has nothing to do with
+information arrival. Do volume bars, or splitting flow by average trade size
+(a crude institutional/retail proxy), reveal signal that time bars hide?
+
+**Result.** No. At ~400 bars/day the flagged cells have unstable in-sample sign;
+at ~100 bars/day results turn uniformly negative out-of-sample.
+
+**Verdict - no edge.** Resampling does not rescue a sub-cost signal.
+
+---
+
+## Study 08 - Regime conditioning
+
+**Question.** The 1-second lead-lag is latency-infeasible. Does it concentrate
+in a reachable regime - a time of day, or a volatility state - strongly enough
+that the 5-second version clears costs?
+
+**Result.** No time-of-day window clears cost in either instrument; the best is
+0.29x at 5-second bars. The only cell that ever clears is the same 1-second
+top-1% signal, now in the high-volatility tercile (1.63x cost, t = 3.37) on
+n = 215.
+
+**Verdict - no reachable regime.** The edge stays where it was: inside one
+second.
+
+---
+
+## Study 09 - Daily horizon
+
+**Question.** At daily horizons a round trip costs 0.7-1.0% of the average
+absolute move. Cost is effectively free. Is anything predictable?
+
+| Signal | IS r | OOS r | OOS t |
+|---|---|---|---|
+| Daily OFI | -0.014 | 0.034 | -0.84 |
+| Close position in range | 0.035 | 0.146 | 0.86 |
+| Prior-day return | -0.001 | -0.076 | -0.61 |
+| Volume ratio | -0.164 | -0.011 | -0.41 |
+
+Daily-OFI quintiles against next-day return are non-monotone noise
+(+15.5, -10.0, +17.9, -10.7, +13.3 bp).
+
+**Verdict - decisive null.** Every abs(t) below 1.0. This matters more than a
+typical null: **cost is not the binding constraint at this horizon.** There is
+simply no predictability to capture.
+
+---
+
+## Study 10 - Maker versus taker
+
+Every study above assumes crossing the spread. Study 01 found aggressors are
+adversely selected - which is the same statement as *passive fills are
+compensated*. Pricing that difference:
+
+| | Spread | Comm | Taker cost | Maker cost | Best gross | Taker net | Maker net |
+|---|---|---|---|---|---|---|---|
+| A | 0.331 | 0.132 | 0.464 | -0.199 | 0.106 | **-0.358** | **+0.305** |
+| B | 0.190 | 0.030 | 0.220 | -0.159 | 0.023 | -0.197 | +0.182 |
+
+The swing between taker and maker is twice the spread - **0.662 bp on
+instrument A, roughly six times the largest gross edge found anywhere in this
+research (0.106 bp).**
+
+**This is the central result of the project.** Execution side dominates signal
+quality by close to an order of magnitude. Every signal tested is economically
+small next to the question of whether you pay or earn the spread.
+
+**It is a bound, not a strategy.** Maker net assumes fills are free. A resting
+order fills when someone chooses to trade against it, which happens
+preferentially when they know something you do not. The true figure is:
+
+```
+maker_net  -  E[adverse selection | filled]
+```
+
+and the second term cannot be estimated from trade data.
+
+---
+
+## Conclusion after ten studies
+
+The problem has a consistent shape, and it is not "no edge exists":
+
+- **Where predictability exists, it is at one second.** The lead-lag is
+  overwhelming (t = 120) but unreachable without professional latency.
+- **Where costs are irrelevant, there is no predictability.** The daily horizon
+  is a clean null, and cost is only ~1% of the move there.
+- **In between, gross edges cluster at 0.02-0.35 bp** against costs of
+  0.22-0.46 bp. Consistently the wrong side of the line.
+- **The one quantity larger than any signal found is the spread itself.**
+
+The implication is to stop searching for better signals. The measured signals
+are all around 0.1 bp; the execution decision is worth around 0.66 bp. Effort
+belongs on the side of the trade, not the direction of it.
+
+Resolving that requires queue position, fill probability, and book state around
+fills - market-by-order data. That is a specific, falsifiable reason to extend
+the capture, and the only remaining question this dataset cannot answer.
+
+## Tests run, for multiple-testing accounting
+
+Approximately **150** signal / horizon / filter / regime combinations across ten
+studies. At a 5% threshold, roughly seven would appear significant by chance.
+Exactly one combination cleared costs with a stable sign - the 1-second top-1%
+lead-lag - which is fewer than chance alone would predict, and it fails on
+execution grounds rather than statistical ones.

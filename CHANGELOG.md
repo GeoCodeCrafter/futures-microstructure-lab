@@ -7,6 +7,43 @@ Format: `Added` / `Changed` / `Fixed` / `Found` / `Open`.
 
 ---
 
+## 2026-08-29 (second pass)
+
+Deep second pass: five further studies covering the classes of test the first
+pass did not reach.
+
+**Added**
+- `study_06_pairs.py` - spread mean reversion between the two contracts.
+- `study_07_volume_bars.py` - volume-bar sampling and trade-size stratification.
+- `study_08_regime.py` - time-of-day and volatility-regime conditioning.
+- `study_09_daily_signals.py` - daily-horizon signals where cost is negligible.
+- `study_10_execution.py` - maker versus taker economics.
+
+**Found**
+- **Study 06** - no spread edge once the z-score is causal.
+- **Study 07** - volume bars and trade-size splits do not rescue a sub-cost signal.
+- **Study 08** - no reachable regime; the lead-lag stays inside one second.
+- **Study 09** - decisive null at daily horizon, where cost is only ~1% of the
+  average move. Cost is not the binding constraint there; predictability is absent.
+- **Study 10** - **the central result.** The taker/maker swing is 0.662 bp, about
+  six times the largest gross edge measured anywhere (0.106 bp). Execution side
+  dominates signal quality by close to an order of magnitude.
+
+**Fixed**
+- `R-010` look-ahead in the spread z-score, which had produced an apparent 25x-cost
+  edge with t > 30. Recomputed causally; the effect vanished entirely.
+
+**Changed**
+- Multiple-testing accounting added to FINDINGS: ~150 combinations tested across
+  ten studies, one cleared costs with a stable sign - fewer than chance alone
+  would predict.
+
+**Open**
+- The maker bound cannot be resolved with trade data. Requires market-by-order.
+- Stale-recording alarm still writes to a log with nothing acting on it.
+
+---
+
 ## 2026-08-29
 
 **Added**
