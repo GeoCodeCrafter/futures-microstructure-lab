@@ -1,0 +1,12 @@
+# Market data is licensed and must never be committed.
+data/
+*.scid
+*.depth
+*.csv
+*.gz
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
